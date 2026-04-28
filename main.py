@@ -88,50 +88,79 @@ def maybe_add_note(pattern, step, chance):
     if random.random() < chance:
         pattern[step] = 1
 
+def get_variation_settings(level):
+    if level == "simple":
+        return {
+            "kick_chance": 0.03,
+            "snare_chance": 0.02,
+            "hat_chance": 0.06,
+            "roll_chance": 0.03
+        }
+
+    if level == "spicy":
+        return {
+            "kick_chance": 0.08,
+            "snare_chance": 0.04,
+            "hat_chance": 0.12,
+            "roll_chance": 0.08
+        }
+
+    if level == "chaos":
+        return {
+            "kick_chance": 0.14,
+            "snare_chance": 0.08,
+            "hat_chance": 0.20,
+            "roll_chance": 0.15
+        }
 
 
 
 
 
-def randomize_trap(grid, bars):
+def randomize_trap(grid, bars, level):
     new_grid = {
         "kick": grid["kick"].copy(),
         "snare": grid["snare"].copy(),
         "hat": grid["hat"].copy()
     }
 
+    settings = get_variation_settings(level)
+
     steps_per_16th = STEPS_PER_BEAT // 4
 
     for bar in range(bars):
         bar_start = bar * STEPS_PER_BAR
 
-        # genre-safe extra kick spots
+        # --- KICKS ---
         kick_spots_16th = [4, 7, 10, 11, 12, 15]
         for spot in kick_spots_16th:
             step = bar_start + spot * steps_per_16th
-            maybe_add_note(new_grid["kick"], step, 0.25)
+            if step < len(new_grid["kick"]):
+                maybe_add_note(new_grid["kick"], step, settings["kick_chance"])
 
-        # light ghost snare/clap before beat 4 or end of bar
-        snare_spots_16th = [12, 16]
+        # --- SNARES / CLAPS ---
+        if bar % 2 == 1:
+            snare_spots_16th = [12, 16]
+        else:
+            snare_spots_16th = [16]
+
         for spot in snare_spots_16th:
             step = bar_start + (spot - 1) * steps_per_16th
-            maybe_add_note(new_grid["snare"], step, 0.15)
+            if step < len(new_grid["snare"]):
+                maybe_add_note(new_grid["snare"], step, settings["snare_chance"])
 
-        # hat roll zones: late in phrases
+        # --- HI-HATS (16th fills) ---
+        hat_spots = [1, 3, 5, 7, 9, 11, 13, 15]
+        for spot in hat_spots:
+            step = bar_start + spot
+            if step < len(new_grid["hat"]):
+                maybe_add_note(new_grid["hat"], step, settings["hat_chance"])
+
+        # --- HI-HAT ROLLS ---
         roll_start = bar_start + 14 * steps_per_16th
         roll_end = bar_start + 16 * steps_per_16th
 
-        # add extra 16th-note hats between the main hats
-        hat_spots = [1, 3, 5, 7, 9, 11, 13, 15]
-
-        for spot in hat_spots:
-            step = bar_start + spot
-
-            # don't go past the pattern length
-            if step < len(new_grid["hat"]):
-                maybe_add_note(new_grid["hat"], step, 0.35)
-
-        if random.random() < 0.35:
+        if random.random() < settings["roll_chance"]:
             for step in range(roll_start, min(roll_end, TOTAL_STEPS), 2):
                 new_grid["hat"][step] = 1
 
@@ -145,6 +174,7 @@ def randomize_trap(grid, bars):
 
 VALID_STYLES = ["lofi", "trap", "house"]
 VALID_BAR_LENGTHS = [2, 4, 8]
+VALID_LEVELS = ["simple", "spicy", "chaos"]
 
 style = input("Choose a genre (lofi, trap, house): ").lower().strip()
 
@@ -162,6 +192,12 @@ if bars not in VALID_BAR_LENGTHS:
     print("Choose a valid pattern length")
     exit()
 
+level = input("Choose variation level (simple, spicy, chaos): ").lower().strip()
+
+if level not in VALID_LEVELS:
+    print("Choose a valid variation level")
+    exit()
+
 STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
 TOTAL_STEPS = bars * STEPS_PER_BAR
 
@@ -177,7 +213,7 @@ grid = events_to_grid(events, bars, TOTAL_STEPS)
 
 
 if style == "trap":
-    grid = randomize_trap(grid, bars)
+    grid = randomize_trap(grid, bars, level)
 
 
 
