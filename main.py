@@ -15,11 +15,11 @@ NOTE_MAP = {
     "hat": 38
 }
 
-BARS = 2
+DEFAULT_BARS = 4
 BEATS_PER_BAR = 4
 STEPS_PER_BEAT = 4
-STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
-TOTAL_STEPS = BARS * STEPS_PER_BAR
+# STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
+# TOTAL_STEPS = BARS * STEPS_PER_BAR
 
 
 
@@ -30,41 +30,57 @@ def load_template(path):
     mid = mido.MidiFile(path)
     events = []
 
-    time_accum = 0
+    ticks_per_beat = mid.ticks_per_beat
 
-    for msg in mid:
-        time_accum += msg.time
+    for track in mid.tracks:
+        tick_accum = 0
 
-        if msg.type == "note_on" and msg.velocity > 0:
-            if msg.note in DRUM_NAMES:
-                events.append({
-                    "time": time_accum,
-                    "note": msg.note,
-                    "velocity": msg.velocity,
-                    "drum": DRUM_NAMES[msg.note],
-                })
+        for msg in track:
+            tick_accum += msg.time
+
+            if msg.type == "note_on" and msg.velocity > 0:
+                if msg.note in DRUM_NAMES:
+                    beat_time = tick_accum / ticks_per_beat
+
+                    events.append({
+                        "time": beat_time,
+                        "note": msg.note,
+                        "velocity": msg.velocity,
+                        "drum": DRUM_NAMES[msg.note],
+                    })
+
+    events.sort(key=lambda e: e["time"])
 
     return events
 
-def events_to_grid(events):
+def events_to_grid(events, bars, total_steps):
     grid = {
-        "kick": [0] * TOTAL_STEPS,
-        "snare": [0] * TOTAL_STEPS,
-        "hat": [0] * TOTAL_STEPS
+        "kick": [0] * total_steps,
+        "snare": [0] * total_steps,
+        "hat": [0] * total_steps
     }
 
-    total_beats = BARS * BEATS_PER_BAR
+    template_length_beats = max(e["time"] for e in events)
+    template_bars = max(1, round(template_length_beats / BEATS_PER_BAR))
 
-    for e in events:
-        beat_time = e["time"] % total_beats
+    total_beats = bars * BEATS_PER_BAR
 
-        step = round(beat_time * STEPS_PER_BEAT)
+    for repeat_bar in range(0, bars, template_bars):
+        repeat_offset_beats = repeat_bar * BEATS_PER_BAR
 
-        if step >= TOTAL_STEPS:
-            step = step % TOTAL_STEPS
+        for e in events:
+            beat_time = e["time"] + repeat_offset_beats
 
-        drum = e["drum"]
-        grid[drum][step] = 1
+            if beat_time >= total_beats:
+                continue
+
+            step = round(beat_time * STEPS_PER_BEAT)
+
+            if step >= total_steps:
+                continue
+
+            drum = e["drum"]
+            grid[drum][step] = 1
 
     return grid
 
@@ -77,7 +93,7 @@ def maybe_add_note(pattern, step, chance):
 
 
 
-def randomize_trap(grid):
+def randomize_trap(grid, bars):
     new_grid = {
         "kick": grid["kick"].copy(),
         "snare": grid["snare"].copy(),
@@ -86,7 +102,7 @@ def randomize_trap(grid):
 
     steps_per_16th = STEPS_PER_BEAT // 4
 
-    for bar in range(BARS):
+    for bar in range(bars):
         bar_start = bar * STEPS_PER_BAR
 
         # genre-safe extra kick spots
@@ -105,6 +121,16 @@ def randomize_trap(grid):
         roll_start = bar_start + 14 * steps_per_16th
         roll_end = bar_start + 16 * steps_per_16th
 
+        # add extra 16th-note hats between the main hats
+        hat_spots = [1, 3, 5, 7, 9, 11, 13, 15]
+
+        for spot in hat_spots:
+            step = bar_start + spot
+
+            # don't go past the pattern length
+            if step < len(new_grid["hat"]):
+                maybe_add_note(new_grid["hat"], step, 0.35)
+
         if random.random() < 0.35:
             for step in range(roll_start, min(roll_end, TOTAL_STEPS), 2):
                 new_grid["hat"][step] = 1
@@ -117,7 +143,27 @@ def randomize_trap(grid):
 
 
 
-style = sys.argv[1] if len(sys.argv) > 1 else "lofi"
+VALID_STYLES = ["lofi", "trap", "house"]
+VALID_BAR_LENGTHS = [2, 4, 8]
+
+style = input("Choose a genre (lofi, trap, house): ").lower().strip()
+
+if style not in VALID_STYLES:
+    print("Choose a correct genre")
+    exit()
+
+try:
+    bars = int(input("Choose pattern length in bars (2, 4, 8): ").strip())
+except ValueError:
+    print("Choose a valid pattern length")
+    exit()
+
+if bars not in VALID_BAR_LENGTHS:
+    print("Choose a valid pattern length")
+    exit()
+
+STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
+TOTAL_STEPS = bars * STEPS_PER_BAR
 
 if style not in ["lofi", "trap", "house"]:
     print("Invalid style. Choose: lofi, trap, or house")
@@ -125,13 +171,13 @@ if style not in ["lofi", "trap", "house"]:
 
 path = f"templates/{style}.mid"
 events = load_template(path)
-grid = events_to_grid(events)
+grid = events_to_grid(events, bars, TOTAL_STEPS)
 
 
 
 
 if style == "trap":
-    grid = randomize_trap(grid)
+    grid = randomize_trap(grid, bars)
 
 
 
