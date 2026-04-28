@@ -1,16 +1,33 @@
-# This is a sample Python script.
+import mido
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+DRUM_NAMES = {
+    36: "kick",
+    38: "snare",
+    42: "hat"
+}
 
+def load_template(path):
+    mid = mido.MidiFile(path)
+    events = []
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+    time_accum = 0
 
+    for msg in mid:
+        time_accum += msg.time
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+        if msg.type == "note_on" and msg.velocity > 0:
+            if msg.note in [36, 38, 42]:
+                events.append({
+                    "time": time_accum,
+                    "note": msg.note,
+                    "velocity": msg.velocity,
+                    "drum": DRUM_NAMES[msg.note],
+                })
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    return events
+
+events = load_template("templates/lofi1.mid")
+
+print("First 10 events:")
+for e in events[:10]:
+    print(e)
