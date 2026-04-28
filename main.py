@@ -88,6 +88,11 @@ def maybe_add_note(pattern, step, chance):
     if random.random() < chance:
         pattern[step] = 1
 
+def maybe_remove_note(pattern, step, chance):
+    if 0 <= step < len(pattern):
+        if random.random() < chance:
+            pattern[step] = 0
+
 def get_variation_settings(level):
     if level == "simple":
         return {
@@ -128,6 +133,12 @@ def randomize_trap(grid, bars, level):
 
     steps_per_16th = STEPS_PER_BEAT // 4
 
+    snare_remove_chances = {
+        "simple": 0.8,
+        "spicy": 0.4,
+        "chaos": 0.1
+    }
+
     for bar in range(bars):
         bar_start = bar * STEPS_PER_BAR
 
@@ -149,7 +160,15 @@ def randomize_trap(grid, bars, level):
             if step < len(new_grid["snare"]):
                 maybe_add_note(new_grid["snare"], step, settings["snare_chance"])
 
-        # --- HI-HATS (16th fills) ---
+        # remove the extra snare/clap on step 21 more often for simpler loops
+        step_21 = bar_start + 5
+        maybe_remove_note(
+            new_grid["snare"],
+            step_21,
+            snare_remove_chances[level]
+        )
+
+        # --- HI-HATS ---
         hat_spots = [1, 3, 5, 7, 9, 11, 13, 15]
         for spot in hat_spots:
             step = bar_start + spot
