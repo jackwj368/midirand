@@ -8,7 +8,7 @@ Current Genres Include:
   
   - House
 
-The main goal of this project was to make a MIDI generator that doesn’t sound random or bad. A lot of generators just throw notes anywhere (drum monkey), but this one makes sure everything fits the genre.
+The main goal of this project was to make a MIDI generator that doesn’t sound random or bad. A lot of generators just throw notes anywhere, but this one makes sure everything fits the genre.
 
 To set the project up, run:
 
