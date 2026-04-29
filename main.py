@@ -96,8 +96,8 @@ def combine_temp_and_max(temp_grid, max_grid, level):
 
     level_chances = {
         "simple": 0.05,
-        "spicy": 0.18,
-        "chaos": 0.4
+        "medium": 0.18,
+        "too much": 0.4
     }
 
     chance = level_chances[level]
@@ -135,7 +135,7 @@ def get_available_styles(template_folder="templates"):
 
 
 VALID_BAR_LENGTHS = [2, 4, 8]
-VALID_LEVELS = ["simple", "spicy", "chaos"]
+VALID_LEVELS = ["simple", "medium", "too much"]
 
 available_styles = get_available_styles()
 
@@ -166,7 +166,10 @@ if bars not in VALID_BAR_LENGTHS:
     print("Choose a valid pattern length")
     exit()
 
-level = input("Choose variation level (simple, spicy, chaos): ").lower().strip()
+level = input("Choose variation level (simple, medium, too much): ").lower().strip()
+
+if level == "toomuch":
+    level = "too much"
 
 if level not in VALID_LEVELS:
     print("Choose a valid variation level")
