@@ -111,6 +111,21 @@ def combine_temp_and_max(temp_grid, max_grid, level):
 
     return final_grid
 
+def get_available_styles(template_folder="templates"):
+    files = os.listdir(template_folder)
+
+    temp_styles = set()
+    max_styles = set()
+
+    for file in files:
+        if file.endswith("_temp.mid"):
+            temp_styles.add(file.replace("_temp.mid", ""))
+
+        if file.endswith("_max.mid"):
+            max_styles.add(file.replace("_max.mid", ""))
+
+    available_styles = sorted(temp_styles.intersection(max_styles))
+    return available_styles
 
 
 
@@ -120,13 +135,24 @@ def combine_temp_and_max(temp_grid, max_grid, level):
 VALID_BAR_LENGTHS = [2, 4, 8]
 VALID_LEVELS = ["simple", "spicy", "chaos"]
 
-style = input("Choose a genre: ").lower().strip()
-temp_path = f"templates/{style}_temp.mid"
-max_path = f"templates/{style}_max.mid"
+available_styles = get_available_styles()
 
-if not os.path.exists(temp_path) or not os.path.exists(max_path):
+if not available_styles:
+    print("No valid genres found. Add matching _temp.mid and _max.mid files.")
+    exit()
+
+print("Available genres:")
+for style_option in available_styles:
+    print(f"- {style_option}")
+
+style = input("Choose a genre: ").lower().strip()
+
+if style not in available_styles:
     print("Choose a correct genre")
     exit()
+
+temp_path = f"templates/{style}_temp.mid"
+max_path = f"templates/{style}_max.mid"
 
 try:
     bars = int(input("Choose pattern length in bars (2, 4, 8): ").strip())
