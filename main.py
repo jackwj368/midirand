@@ -84,106 +84,31 @@ def events_to_grid(events, bars, total_steps):
 
     return grid
 
-def maybe_add_note(pattern, step, chance):
-    if random.random() < chance:
-        pattern[step] = 1
-
-def maybe_remove_note(pattern, step, chance):
-    if 0 <= step < len(pattern):
-        if random.random() < chance:
-            pattern[step] = 0
-
-def get_variation_settings(level):
-    if level == "simple":
-        return {
-            "kick_chance": 0.03,
-            "snare_chance": 0.02,
-            "hat_chance": 0.06,
-            "roll_chance": 0.03
-        }
-
-    if level == "spicy":
-        return {
-            "kick_chance": 0.08,
-            "snare_chance": 0.04,
-            "hat_chance": 0.12,
-            "roll_chance": 0.08
-        }
-
-    if level == "chaos":
-        return {
-            "kick_chance": 0.14,
-            "snare_chance": 0.08,
-            "hat_chance": 0.20,
-            "roll_chance": 0.15
-        }
-
-
-
-
-
-def randomize_trap(grid, bars, level):
-    new_grid = {
-        "kick": grid["kick"].copy(),
-        "snare": grid["snare"].copy(),
-        "hat": grid["hat"].copy()
+def combine_temp_and_max(temp_grid, max_grid, level):
+    final_grid = {
+        "kick": temp_grid["kick"].copy(),
+        "snare": temp_grid["snare"].copy(),
+        "hat": temp_grid["hat"].copy()
     }
 
-    settings = get_variation_settings(level)
-
-    steps_per_16th = STEPS_PER_BEAT // 4
-
-    snare_remove_chances = {
-        "simple": 0.8,
-        "spicy": 0.4,
-        "chaos": 0.1
+    level_chances = {
+        "simple": 0.05,
+        "spicy": 0.18,
+        "chaos": 0.4
     }
 
-    for bar in range(bars):
-        bar_start = bar * STEPS_PER_BAR
+    chance = level_chances[level]
 
-        # --- KICKS ---
-        kick_spots_16th = [4, 7, 10, 11, 12, 15]
-        for spot in kick_spots_16th:
-            step = bar_start + spot * steps_per_16th
-            if step < len(new_grid["kick"]):
-                maybe_add_note(new_grid["kick"], step, settings["kick_chance"])
+    for drum in final_grid:
+        for step in range(len(final_grid[drum])):
+            note_is_required = temp_grid[drum][step] == 1
+            note_is_allowed = max_grid[drum][step] == 1
 
-        # --- SNARES / CLAPS ---
-        if bar % 2 == 1:
-            snare_spots_16th = [12, 16]
-        else:
-            snare_spots_16th = [16]
+            if note_is_allowed and not note_is_required:
+                if random.random() < chance:
+                    final_grid[drum][step] = 1
 
-        for spot in snare_spots_16th:
-            step = bar_start + (spot - 1) * steps_per_16th
-            if step < len(new_grid["snare"]):
-                maybe_add_note(new_grid["snare"], step, settings["snare_chance"])
-
-        # remove the extra snare/clap on step 21 more often for simpler loops
-        step_21 = bar_start + 5
-        maybe_remove_note(
-            new_grid["snare"],
-            step_21,
-            snare_remove_chances[level]
-        )
-
-        # --- HI-HATS ---
-        hat_spots = [1, 3, 5, 7, 9, 11, 13, 15]
-        for spot in hat_spots:
-            step = bar_start + spot
-            if step < len(new_grid["hat"]):
-                maybe_add_note(new_grid["hat"], step, settings["hat_chance"])
-
-        # --- HI-HAT ROLLS ---
-        roll_start = bar_start + 14 * steps_per_16th
-        roll_end = bar_start + 16 * steps_per_16th
-
-        if random.random() < settings["roll_chance"]:
-            for step in range(roll_start, min(roll_end, TOTAL_STEPS), 2):
-                new_grid["hat"][step] = 1
-
-    return new_grid
+    return final_grid
 
 
 
@@ -224,15 +149,22 @@ if style not in ["lofi", "trap", "house"]:
     print("Invalid style. Choose: lofi, trap, or house")
     exit()
 
-path = f"templates/{style}.mid"
-events = load_template(path)
-grid = events_to_grid(events, bars, TOTAL_STEPS)
+temp_path = f"templates/{style}_temp.mid"
+max_path = f"templates/{style}_max.mid"
+
+temp_events = load_template(temp_path)
+max_events = load_template(max_path)
+
+temp_grid = events_to_grid(temp_events, bars, TOTAL_STEPS)
+max_grid = events_to_grid(max_events, bars, TOTAL_STEPS)
+
+grid = combine_temp_and_max(temp_grid, max_grid, level)
 
 
 
 
-if style == "trap":
-    grid = randomize_trap(grid, bars, level)
+# if style == "trap":
+#     grid = randomize_trap(grid, bars, level)
 
 
 
