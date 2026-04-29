@@ -1,3 +1,4 @@
+import os
 import mido
 import sys
 import random
@@ -116,13 +117,14 @@ def combine_temp_and_max(temp_grid, max_grid, level):
 
 
 
-VALID_STYLES = ["lofi", "trap", "house"]
 VALID_BAR_LENGTHS = [2, 4, 8]
 VALID_LEVELS = ["simple", "spicy", "chaos"]
 
-style = input("Choose a genre (lofi, trap, house): ").lower().strip()
+style = input("Choose a genre: ").lower().strip()
+temp_path = f"templates/{style}_temp.mid"
+max_path = f"templates/{style}_max.mid"
 
-if style not in VALID_STYLES:
+if not os.path.exists(temp_path) or not os.path.exists(max_path):
     print("Choose a correct genre")
     exit()
 
@@ -148,9 +150,6 @@ TOTAL_STEPS = bars * STEPS_PER_BAR
 if style not in ["lofi", "trap", "house"]:
     print("Invalid style. Choose: lofi, trap, or house")
     exit()
-
-temp_path = f"templates/{style}_temp.mid"
-max_path = f"templates/{style}_max.mid"
 
 temp_events = load_template(temp_path)
 max_events = load_template(max_path)
